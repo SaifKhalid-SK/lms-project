@@ -39,20 +39,46 @@ A complete web-based Learning Management System built with PHP, MySQL, and Boots
 - Cross-table username uniqueness enforcement
 - Auto-enrollment on student registration
 
-## Setup Instructions
-1. Install XAMPP
-2. Start Apache and MySQL
-3. Create database `lms_db` in phpMyAdmin
-4. Import `schema.sql` then `seed.sql`
-5. Place project in `C:\xampp\htdocs\lms\`
-6. Open `localhost/lms/login.php`
+## How To Run This Project Locally
 
-## Login Credentials (Demo)
-| Role | Username | Password |
-|------|----------|----------|
-| Admin | admin | admin123 |
-| CS Teacher (Sem 1-4) | teacher1 | teach123 |
-| CS Teacher (Sem 5-8) | teacher2 | teach123 |
+### Requirements
+- XAMPP (Apache + MySQL)
+- Any browser
+
+### Setup Steps
+
+1. Download or clone this repository
+   git clone https://github.com/SaifKhalid-SK/lms-project.git
+
+2. Copy the project folder to:
+   C:\xampp\htdocs\lms\
+
+3. Start XAMPP
+   - Start Apache
+   - Start MySQL
+
+4. Create the database
+   - Open localhost/phpmyadmin
+   - Create a new database named: lms_db
+   - Click Import tab
+   - Choose file: database/lms_complete.sql
+   - Click Go
+
+5. Open the project
+   localhost/lms/login.php
+
+### Demo Login Credentials
+
+| Role       | Username  | Password  |
+|------------|-----------|-----------|
+| Admin      | admin     | admin123  |
+| CS Teacher | teacher1  | teach123  |
+| CS Teacher | teacher2  | teach123  |
+| BA Teacher | teacher3  | teach123  |
+| BA Teacher | teacher4  | teach123  |
+| EE Teacher | teacher5  | teach123  |
+| EE Teacher | teacher6  | teach123  |
+| Student    | (register via register.php) | - |
 
 ## Project Structure
 lms/
@@ -60,6 +86,8 @@ lms/
 ├── login.php
 ├── register.php
 ├── logout.php
+├── Database/
+|   ├──lms_complete.sql
 ├── student/
 │   ├── dashboard.php
 │   ├── subject.php
