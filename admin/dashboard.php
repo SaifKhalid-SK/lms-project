@@ -19,21 +19,14 @@ $online_students = mysqli_fetch_assoc(mysqli_query($conn,
 $online_teachers = mysqli_fetch_assoc(mysqli_query($conn,
     "SELECT COUNT(*) AS c FROM teachers WHERE is_online = 1"))['c'];
 
-// ── SEARCH ──
-$student_search = isset($_GET['student_search'])
-                ? trim($_GET['student_search']) : '';
-$teacher_search = isset($_GET['teacher_search'])
-                ? trim($_GET['teacher_search']) : '';
+
 
 // ── FETCH STUDENTS ──
 $stu_sql = "SELECT id, full_name, reg_no, department,
                    semester, is_online
             FROM users
-            WHERE full_name LIKE ? OR reg_no LIKE ?
             ORDER BY is_online DESC, full_name ASC";
 $stu_stmt = mysqli_prepare($conn, $stu_sql);
-$stu_like = '%' . $student_search . '%';
-mysqli_stmt_bind_param($stu_stmt, "ss", $stu_like, $stu_like);
 mysqli_stmt_execute($stu_stmt);
 $students = mysqli_stmt_get_result($stu_stmt);
 $student_rows = [];
@@ -44,11 +37,8 @@ while ($s = mysqli_fetch_assoc($students)) {
 // ── FETCH TEACHERS ──
 $tea_sql = "SELECT id, full_name, email, department, is_online
             FROM teachers
-            WHERE full_name LIKE ? OR department LIKE ?
             ORDER BY is_online DESC, full_name ASC";
 $tea_stmt = mysqli_prepare($conn, $tea_sql);
-$tea_like = '%' . $teacher_search . '%';
-mysqli_stmt_bind_param($tea_stmt, "ss", $tea_like, $tea_like);
 mysqli_stmt_execute($tea_stmt);
 $teachers = mysqli_stmt_get_result($tea_stmt);
 $teacher_rows = [];
@@ -398,15 +388,15 @@ while ($t = mysqli_fetch_assoc($teachers)) {
             <span>
                 <i class="fas fa-user-graduate me-2"></i>Students
             </span>
-            <form method="GET" style="display:inline;">
+            <form method="GET" style="display:inline;" id="student_form">
                 <input type="hidden" name="teacher_search"
-                       value="<?= htmlspecialchars($teacher_search) ?>">
+                        value="<?= htmlspecialchars($teacher_search) ?>">
                 <input type="text"
-                       name="student_search"
+                       id="student_search_input"
                        class="search-input"
                        placeholder="Search by name or reg no..."
-                       value="<?= htmlspecialchars($student_search) ?>"
-                       oninput="this.form.submit()">
+                       oninput="filterTable(this.value, 'students_table')"
+                       autocomplete="off">
             </form>
         </div>
 
@@ -417,7 +407,7 @@ while ($t = mysqli_fetch_assoc($teachers)) {
             </div>
         <?php else: ?>
         <div class="table-responsive">
-            <table class="table admin-table">
+            <table class="table admin-table" id="students_table">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -480,15 +470,15 @@ while ($t = mysqli_fetch_assoc($teachers)) {
             <span>
                 <i class="fas fa-chalkboard-teacher me-2"></i>Teachers
             </span>
-            <form method="GET" style="display:inline;">
+            <form method="GET" style="display:inline;" id="teacher_form">
                 <input type="hidden" name="student_search"
                        value="<?= htmlspecialchars($student_search) ?>">
                 <input type="text"
-                       name="teacher_search"
+                       id="teacher_search_input"
                        class="search-input"
                        placeholder="Search by name or department..."
-                       value="<?= htmlspecialchars($teacher_search) ?>"
-                       oninput="this.form.submit()">
+                       oninput="filterTable(this.value, 'teachers_table')"
+                       autocomplete="off">
             </form>
         </div>
 
@@ -499,7 +489,7 @@ while ($t = mysqli_fetch_assoc($teachers)) {
             </div>
         <?php else: ?>
         <div class="table-responsive">
-            <table class="table admin-table">
+            <table class="table admin-table" id="teachers_table">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -551,5 +541,57 @@ while ($t = mysqli_fetch_assoc($teachers)) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function filterTable(query, tableId) {
+    // Convert search to lowercase for comparison
+    const search = query.toLowerCase().trim();
+    const table  = document.getElementById(tableId);
+    const rows   = table.getElementsByTagName('tbody')[0]
+                        .getElementsByTagName('tr');
+
+    let visibleCount = 0;
+
+    // Loop through every row
+    for (let i = 0; i < rows.length; i++) {
+        // Get all text in this row
+        const rowText = rows[i].innerText.toLowerCase();
+
+        if (rowText.indexOf(search) > -1) {
+            // Show row if it matches
+            rows[i].style.display = '';
+            visibleCount++;
+        } else {
+            // Hide row if it does not match
+            rows[i].style.display = 'none';
+        }
+    }
+
+    // Show no results message if nothing found
+    const noResultId = tableId + '_empty';
+    let noResult     = document.getElementById(noResultId);
+
+    if (visibleCount === 0) {
+        if (!noResult) {
+            const tbody = table.getElementsByTagName('tbody')[0];
+            const colCount = table.getElementsByTagName('th').length;
+            const emptyRow = document.createElement('tr');
+            emptyRow.id = noResultId;
+            emptyRow.innerHTML = `
+                <td colspan="${colCount}"
+                    style="text-align:center;
+                           padding:30px;
+                           color:#95a5a6;
+                           font-size:14px;">
+                    <i class="fas fa-search me-2"></i>
+                    No results found for "${query}"
+                </td>`;
+            tbody.appendChild(emptyRow);
+        }
+    } else {
+        // Remove no results message if results found
+        if (noResult) noResult.remove();
+    }
+}
+</script>
 </body>
 </html>
