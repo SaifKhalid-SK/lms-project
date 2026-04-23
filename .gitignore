@@ -1,2 +1,33 @@
+# ============================================
+# LMS PROJECT — .gitignore
+# ============================================
+
+# Database credentials — NEVER push this
 config.php
+
+# Environment files
 .env
+.env.local
+.env.production
+
+# Error logs
+*.log
+error_log
+php_errors.log
+
+# Database backups
+*.sql.bak
+*.bak
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor folders
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.temp
