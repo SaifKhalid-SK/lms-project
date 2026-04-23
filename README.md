@@ -1,5 +1,22 @@
 # EduLMS — Learning Management System
 
+## Live Demo
+
+🌐 Live Site: http://sklms.free.nf/login.php
+📝 Register: http://sklms.free.nf/register.php
+
+Demo Credentials
+| Role       | Username  | Password  |
+|------------|-----------|-----------|
+| Admin      | admin     | admin123  |
+| CS Teacher | teacher1  | teach123  |
+| CS Teacher | teacher2  | teach123  |
+| BA Teacher | teacher3  | teach123  |
+| BA Teacher | teacher4  | teach123  |
+| EE Teacher | teacher5  | teach123  |
+| EE Teacher | teacher6  | teach123  |
+| Student    | (register via register.php) | - |
+
 A complete web-based Learning Management System built with PHP, MySQL, and Bootstrap 5.
 
 ## Features
