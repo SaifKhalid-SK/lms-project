@@ -487,6 +487,32 @@ $next_asgn = count($asgn_numbers) > 0 ? max($asgn_numbers) + 1 : 1;
             color: #95a5a6;
             font-size: 14px;
         }
+        /* ── ANNOUNCEMENT BUTTONS ── */
+        .btn-ann-edit {
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-ann-edit:hover { opacity: 0.85; }
+
+        .btn-ann-delete {
+            background: #E74C3C;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-ann-delete:hover { opacity: 0.85; }
     </style>
 </head>
 <body>
@@ -566,46 +592,170 @@ $next_asgn = count($asgn_numbers) > 0 ? max($asgn_numbers) + 1 : 1;
         </button>
     </div>
 
-    <!-- ══════════════════════════════════════ -->
-    <!-- TAB 1: ANNOUNCEMENT                   -->
-    <!-- ══════════════════════════════════════ -->
-    <div id="tab-announcement" class="section-box active">
-        <div class="section-title">
-            <i class="fas fa-bullhorn"></i> Post Announcement
+<!-- ══════════════════════════════════════ -->
+<!-- TAB 1: ANNOUNCEMENT                   -->
+<!-- ══════════════════════════════════════ -->
+<div id="tab-announcement" class="section-box active">
+    <div class="section-title">
+        <i class="fas fa-bullhorn"></i> Post Announcement
+    </div>
+
+    <?php
+    // ── HANDLE EDIT ANNOUNCEMENT ──
+    if (isset($_POST['edit_announcement'])) {
+        $ann_id      = (int)$_POST['ann_id'];
+        $ann_message = trim($_POST['edit_message']);
+        if (!empty($ann_message)) {
+            $upd = mysqli_prepare($conn,
+                "UPDATE announcements SET message = ?
+                 WHERE id = ? AND teacher_id = ?");
+            mysqli_stmt_bind_param($upd, "sii",
+                $ann_message, $ann_id, $teacher_id);
+            mysqli_stmt_execute($upd);
+            $success = "Announcement updated successfully.";
+        }
+    }
+
+    // ── HANDLE DELETE ANNOUNCEMENT ──
+    if (isset($_POST['delete_announcement'])) {
+        $ann_id = (int)$_POST['ann_id'];
+        $del    = mysqli_prepare($conn,
+            "DELETE FROM announcements
+             WHERE id = ? AND teacher_id = ?");
+        mysqli_stmt_bind_param($del, "ii", $ann_id, $teacher_id);
+        mysqli_stmt_execute($del);
+        $success = "Announcement deleted.";
+    }
+
+    // Re-fetch announcements after any changes
+    $ann_sql  = "SELECT id, message, created_at
+                 FROM announcements
+                 WHERE subject_id = ? AND teacher_id = ?
+                 ORDER BY created_at DESC";
+    $ann_stmt = mysqli_prepare($conn, $ann_sql);
+    mysqli_stmt_bind_param($ann_stmt, "ii",
+        $subject_id, $teacher_id);
+    mysqli_stmt_execute($ann_stmt);
+    $ann_result    = mysqli_stmt_get_result($ann_stmt);
+    $announcements = [];
+    while ($a = mysqli_fetch_assoc($ann_result)) {
+        $announcements[] = $a;
+    }
+    ?>
+
+    <!-- Post New Announcement -->
+    <form method="POST">
+        <div class="mb-3">
+            <label>Announcement Message</label>
+            <textarea name="message"
+                      class="form-control"
+                      rows="4"
+                      placeholder="Type your announcement here..."
+                      required></textarea>
+        </div>
+        <button type="submit"
+                name="post_announcement"
+                class="btn-submit">
+            <i class="fas fa-paper-plane me-2"></i>Post Announcement
+        </button>
+    </form>
+
+    <!-- Previous Announcements -->
+    <?php if (!empty($announcements)): ?>
+        <hr style="margin:25px 0; border-color:#eaf4fb;">
+        <div class="section-title" style="font-size:13px;">
+            <i class="fas fa-history"></i>
+            Previous Announcements
+            <span style="background:#eaf4fb; color:#2980b9;
+                         border-radius:20px; padding:2px 10px;
+                         font-size:11px; margin-left:6px;">
+                <?= count($announcements) ?>
+            </span>
         </div>
 
-        <form method="POST">
-            <div class="mb-3">
-                <label>Announcement Message</label>
-                <textarea name="message" class="form-control"
-                          rows="4"
-                          placeholder="Type your announcement here..."
-                          required></textarea>
-            </div>
-            <button type="submit" name="post_announcement" class="btn-submit">
-                <i class="fas fa-paper-plane me-2"></i>Post Announcement
-            </button>
-        </form>
+        <?php foreach ($announcements as $ann): ?>
+            <div class="prev-ann" id="ann-<?= $ann['id'] ?>">
 
-        <!-- Previous Announcements -->
-        <?php if (!empty($announcements)): ?>
-            <hr style="margin:25px 0; border-color:#eaf4fb;">
-            <div class="section-title" style="font-size:13px;">
-                <i class="fas fa-history"></i> Previous Announcements
-            </div>
-            <?php foreach ($announcements as $ann): ?>
-                <div class="prev-ann">
+                <!-- View Mode -->
+                <div id="view-<?= $ann['id'] ?>">
                     <div class="ann-msg">
                         <?= htmlspecialchars($ann['message']) ?>
                     </div>
-                    <div class="ann-time">
-                        <i class="fas fa-clock me-1"></i>
-                        <?= date('d M Y, h:i A', strtotime($ann['created_at'])) ?>
+                    <div style="display:flex;
+                                justify-content:space-between;
+                                align-items:center;
+                                margin-top:8px;
+                                flex-wrap:wrap;
+                                gap:8px;">
+                        <div class="ann-time">
+                            <i class="fas fa-clock me-1"></i>
+                            <?= date('d M Y, h:i A',
+                                strtotime($ann['created_at'])) ?>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <!-- Edit Button -->
+                            <button class="btn-ann-edit"
+                                    onclick="toggleEdit(
+                                        <?= $ann['id'] ?>,
+                                        `<?= addslashes(
+                                            htmlspecialchars(
+                                                $ann['message'])) ?>`)">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </button>
+                            <!-- Delete Button -->
+                            <form method="POST"
+                                  style="display:inline;"
+                                  onsubmit="return confirm(
+                                    'Delete this announcement?')">
+                                <input type="hidden"
+                                       name="ann_id"
+                                       value="<?= $ann['id'] ?>">
+                                <button type="submit"
+                                        name="delete_announcement"
+                                        class="btn-ann-delete">
+                                    <i class="fas fa-trash me-1"></i>
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
+
+                <!-- Edit Mode (hidden by default) -->
+                <div id="edit-<?= $ann['id'] ?>"
+                     style="display:none;">
+                    <form method="POST">
+                        <input type="hidden"
+                               name="ann_id"
+                               value="<?= $ann['id'] ?>">
+                        <textarea name="edit_message"
+                                  id="edit-text-<?= $ann['id'] ?>"
+                                  class="form-control mb-2"
+                                  rows="3"
+                                  required></textarea>
+                        <div style="display:flex; gap:8px;">
+                            <button type="submit"
+                                    name="edit_announcement"
+                                    class="btn-submit"
+                                    style="padding:7px 16px;
+                                           font-size:13px;">
+                                <i class="fas fa-save me-1"></i>
+                                Save
+                            </button>
+                            <button type="button"
+                                    class="btn btn-light btn-sm"
+                                    onclick="cancelEdit(
+                                        <?= $ann['id'] ?>)">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>
 
     <!-- ══════════════════════════════════════ -->
     <!-- TAB 2: ATTENDANCE                     -->
@@ -719,116 +869,178 @@ $next_asgn = count($asgn_numbers) > 0 ? max($asgn_numbers) + 1 : 1;
         <?php endif; ?>
     </div>
 
-    <!-- ══════════════════════════════════════ -->
-    <!-- TAB 3: GRADES                         -->
-    <!-- ══════════════════════════════════════ -->
-    <div id="tab-grades" class="section-box">
-        <div class="section-title">
-            <i class="fas fa-chart-bar"></i> Enter Grades
-        </div>
-
-        <?php if (empty($students)): ?>
-            <div class="no-students">
-                <i class="fas fa-user-slash fa-2x mb-2 d-block"></i>
-                No students enrolled in this subject.
-            </div>
-        <?php else: ?>
-
-        <!-- Quiz / Assignment toggle -->
-        <div class="grade-type-tabs">
-            <button class="grade-type-btn active"
-                    onclick="switchGradeType('Quiz', this)">
-                <i class="fas fa-pen me-1"></i>Quiz
-            </button>
-            <button class="grade-type-btn"
-                    onclick="switchGradeType('Assignment', this)">
-                <i class="fas fa-file-alt me-1"></i>Assignment
-            </button>
-        </div>
-
-        <form method="POST" id="grades-form">
-            <input type="hidden" name="grade_type" id="grade_type" value="Quiz">
-
-            <div class="row mb-3">
-                <div class="col-md-3">
-                    <label id="grade-number-label">
-                        <i class="fas fa-hashtag me-1"></i>Quiz Number
-                    </label>
-                    <select name="grade_number" class="form-select" id="grade_number">
-                        <!-- Quiz options -->
-                        <option value="<?= $next_quiz ?>">
-                            Quiz <?= $next_quiz ?> (New)
-                        </option>
-                        <?php foreach ($quiz_numbers as $qn): ?>
-                            <option value="<?= $qn ?>">
-                                Quiz <?= $qn ?> (Edit)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label>
-                        <i class="fas fa-star me-1"></i>Total Marks
-                    </label>
-                    <input type="number" name="total_marks"
-                           class="form-control"
-                           placeholder="e.g. 20"
-                           min="1" max="100"
-                           value="20" required>
-                </div>
-                <div class="col-md-6 d-flex align-items-end">
-                    <div style="font-size:13px; color:#7f8c8d; padding-bottom:10px;">
-                        <i class="fas fa-info-circle me-1" style="color:#2980b9;"></i>
-                        Select "New" to add a new quiz/assignment,
-                        or "Edit" to update existing marks.
-                    </div>
-                </div>
-            </div>
-
-            <!-- Students marks input -->
-            <div class="table-responsive">
-                <table class="table grades-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Student Name</th>
-                            <th>Reg No</th>
-                            <th>Marks Obtained</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($students as $i => $stu): ?>
-                            <tr>
-                                <td><?= $i + 1 ?></td>
-                                <td>
-                                    <i class="fas fa-user-graduate me-2"
-                                       style="color:#2980b9;"></i>
-                                    <?= htmlspecialchars($stu['full_name']) ?>
-                                </td>
-                                <td style="color:#7f8c8d; font-size:13px;">
-                                    <?= htmlspecialchars($stu['reg_no']) ?>
-                                </td>
-                                <td>
-                                    <input type="number"
-                                           name="marks[<?= $stu['id'] ?>]"
-                                           class="marks-input"
-                                           placeholder="0"
-                                           min="0" max="100"
-                                           value="0">
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <button type="submit" name="submit_grades" class="btn-submit mt-2">
-                <i class="fas fa-save me-2"></i>Save Grades
-            </button>
-        </form>
-        <?php endif; ?>
+<!-- ══════════════════════════════════════ -->
+<!-- TAB 3: GRADES                         -->
+<!-- ══════════════════════════════════════ -->
+<div id="tab-grades" class="section-box">
+    <div class="section-title">
+        <i class="fas fa-chart-bar"></i> Enter Grades
     </div>
 
+    <?php if (empty($students)): ?>
+        <div class="no-students">
+            <i class="fas fa-user-slash fa-2x mb-2 d-block"></i>
+            No students enrolled in this subject.
+        </div>
+    <?php else: ?>
+
+    <!-- Quiz / Assignment toggle -->
+    <div class="grade-type-tabs">
+        <button class="grade-type-btn active"
+                onclick="switchGradeType('Quiz', this)">
+            <i class="fas fa-pen me-1"></i>Quiz
+        </button>
+        <button class="grade-type-btn"
+                onclick="switchGradeType('Assignment', this)">
+            <i class="fas fa-file-alt me-1"></i>Assignment
+        </button>
+    </div>
+
+    <!-- ── PREVIOUS MARKS VIEWER ── -->
+    <div style="margin-bottom:20px;">
+        <div style="font-size:13px; font-weight:700;
+                    color:#2C3E50; margin-bottom:10px;">
+            <i class="fas fa-history me-2"
+               style="color:#2980b9;"></i>
+            View Previous Marks
+        </div>
+        <div style="display:flex; gap:10px;
+                    flex-wrap:wrap; align-items:center;">
+            <select id="view_type"
+                    class="form-select"
+                    style="width:160px;"
+                    onchange="loadPreviousMarks()">
+                <option value="Quiz">Quiz</option>
+                <option value="Assignment">Assignment</option>
+            </select>
+            <select id="view_number"
+                    class="form-select"
+                    style="width:160px;"
+                    onchange="loadPreviousMarks()">
+                <option value="">-- Select Number --</option>
+                <?php foreach ($quiz_numbers as $qn): ?>
+                    <option value="<?= $qn ?>">
+                        Quiz <?= $qn ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+
+        <!-- Previous marks table -->
+        <div id="previous-marks-box"
+             style="margin-top:15px; display:none;">
+            <table class="table grades-table"
+                   id="previous-marks-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student Name</th>
+                        <th>Reg No</th>
+                        <th>Marks Obtained</th>
+                        <th>Total Marks</th>
+                        <th>Percentage</th>
+                    </tr>
+                </thead>
+                <tbody id="previous-marks-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <hr style="border-color:#eaf4fb; margin:20px 0;">
+
+    <!-- ── ENTER NEW / UPDATE MARKS ── -->
+    <form method="POST" id="grades-form">
+        <input type="hidden"
+               name="grade_type"
+               id="grade_type"
+               value="Quiz">
+
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label id="grade-number-label">
+                    <i class="fas fa-hashtag me-1"></i>
+                    Quiz Number
+                </label>
+                <select name="grade_number"
+                        class="form-select"
+                        id="grade_number">
+                    <option value="<?= $next_quiz ?>">
+                        Quiz <?= $next_quiz ?> (New)
+                    </option>
+                    <?php foreach ($quiz_numbers as $qn): ?>
+                        <option value="<?= $qn ?>">
+                            Quiz <?= $qn ?> (Edit)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>
+                    <i class="fas fa-star me-1"></i>
+                    Total Marks
+                </label>
+                <input type="number"
+                       name="total_marks"
+                       class="form-control"
+                       placeholder="e.g. 20"
+                       min="1" max="100"
+                       value="20" required>
+            </div>
+            <div class="col-md-6 d-flex align-items-end">
+                <div style="font-size:13px; color:#7f8c8d;
+                            padding-bottom:10px;">
+                    <i class="fas fa-info-circle me-1"
+                       style="color:#2980b9;"></i>
+                    Select New to add, Edit to update existing.
+                </div>
+            </div>
+        </div>
+
+        <!-- Students marks input -->
+        <div class="table-responsive">
+            <table class="table grades-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student Name</th>
+                        <th>Reg No</th>
+                        <th>Marks Obtained</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($students as $i => $stu): ?>
+                        <tr>
+                            <td><?= $i + 1 ?></td>
+                            <td>
+                                <i class="fas fa-user-graduate me-2"
+                                   style="color:#2980b9;"></i>
+                                <?= htmlspecialchars($stu['full_name']) ?>
+                            </td>
+                            <td style="color:#7f8c8d; font-size:13px;">
+                                <?= htmlspecialchars($stu['reg_no']) ?>
+                            </td>
+                            <td>
+                                <input type="number"
+                                       name="marks[<?= $stu['id'] ?>]"
+                                       class="marks-input"
+                                       placeholder="0"
+                                       min="0" max="100"
+                                       value="0">
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <button type="submit"
+                name="submit_grades"
+                class="btn-submit mt-2">
+            <i class="fas fa-save me-2"></i>Save Grades
+        </button>
+    </form>
+    <?php endif; ?>
 </div>
 
 <script>
@@ -849,15 +1061,49 @@ function markAll(status) {
     });
 }
 
-// Quiz numbers from PHP
+// ── ANNOUNCEMENT EDIT TOGGLE ──
+function toggleEdit(id, message) {
+    document.getElementById('view-' + id).style.display = 'none';
+    document.getElementById('edit-' + id).style.display = 'block';
+    document.getElementById('edit-text-' + id).value = message;
+}
+
+function cancelEdit(id) {
+    document.getElementById('view-' + id).style.display = 'block';
+    document.getElementById('edit-' + id).style.display = 'none';
+}
+
+// ── GRADE TYPE DATA FROM PHP ──
 const quizNumbers = <?= json_encode($quiz_numbers) ?>;
 const nextQuiz    = <?= $next_quiz ?>;
-
-// Assignment numbers from PHP
 const asgnNumbers = <?= json_encode($asgn_numbers) ?>;
 const nextAsgn    = <?= $next_asgn ?>;
 
-// ── SWITCH BETWEEN QUIZ AND ASSIGNMENT ──
+// All grades data for previous marks viewer
+const allGradesData = <?php
+    $all_g_sql = "SELECT g.student_id, g.type, g.number,
+                         g.marks_obtained, g.total_marks,
+                         u.full_name, u.reg_no
+                  FROM grades g
+                  JOIN users u ON g.student_id = u.id
+                  WHERE g.subject_id = ?
+                  ORDER BY g.type, g.number, u.full_name";
+    $all_g_stmt = mysqli_prepare($conn, $all_g_sql);
+    mysqli_stmt_bind_param($all_g_stmt, "i", $subject_id);
+    mysqli_stmt_execute($all_g_stmt);
+    $all_g_result = mysqli_stmt_get_result($all_g_stmt);
+    $all_g_data   = [];
+    while ($g = mysqli_fetch_assoc($all_g_result)) {
+        $key = $g['type'] . '_' . $g['number'];
+        if (!isset($all_g_data[$key])) {
+            $all_g_data[$key] = [];
+        }
+        $all_g_data[$key][] = $g;
+    }
+    echo json_encode($all_g_data);
+?>;
+
+// ── SWITCH QUIZ / ASSIGNMENT TYPE ──
 function switchGradeType(type, btn) {
     document.querySelectorAll('.grade-type-btn')
             .forEach(b => b.classList.remove('active'));
@@ -865,27 +1111,114 @@ function switchGradeType(type, btn) {
 
     document.getElementById('grade_type').value = type;
 
-    const select = document.getElementById('grade_number');
-    const label  = document.getElementById('grade-number-label');
+    const select      = document.getElementById('grade_number');
+    const label       = document.getElementById('grade-number-label');
+    const viewType    = document.getElementById('view_type');
+    const viewNumber  = document.getElementById('view_number');
 
     select.innerHTML = '';
-    label.innerHTML  = `<i class="fas fa-hashtag me-1"></i>${type} Number`;
+    label.innerHTML  = `<i class="fas fa-hashtag me-1"></i>
+                        ${type} Number`;
+    viewType.value   = type;
 
+    // Update enter grades dropdown
     if (type === 'Quiz') {
-        select.innerHTML += 
-            `<option value="${nextQuiz}">Quiz ${nextQuiz} (New)</option>`;
+        select.innerHTML +=
+            `<option value="${nextQuiz}">
+                Quiz ${nextQuiz} (New)
+             </option>`;
         quizNumbers.forEach(n => {
-            select.innerHTML += 
+            select.innerHTML +=
                 `<option value="${n}">Quiz ${n} (Edit)</option>`;
         });
     } else {
-        select.innerHTML += 
-            `<option value="${nextAsgn}">Assignment ${nextAsgn} (New)</option>`;
+        select.innerHTML +=
+            `<option value="${nextAsgn}">
+                Assignment ${nextAsgn} (New)
+             </option>`;
         asgnNumbers.forEach(n => {
-            select.innerHTML += 
-                `<option value="${n}">Assignment ${n} (Edit)</option>`;
+            select.innerHTML +=
+                `<option value="${n}">
+                    Assignment ${n} (Edit)
+                 </option>`;
         });
     }
+
+    // Update view previous dropdown
+    viewNumber.innerHTML = '<option value="">-- Select Number --</option>';
+    const nums = type === 'Quiz' ? quizNumbers : asgnNumbers;
+    nums.forEach(n => {
+        viewNumber.innerHTML +=
+            `<option value="${n}">${type} ${n}</option>`;
+    });
+
+    // Hide previous marks box
+    document.getElementById('previous-marks-box')
+            .style.display = 'none';
+}
+
+// ── LOAD PREVIOUS MARKS ──
+function loadPreviousMarks() {
+    const type   = document.getElementById('view_type').value;
+    const number = document.getElementById('view_number').value;
+    const box    = document.getElementById('previous-marks-box');
+    const tbody  = document.getElementById('previous-marks-body');
+
+    if (!number) {
+        box.style.display = 'none';
+        return;
+    }
+
+    const key  = type + '_' + number;
+    const data = allGradesData[key];
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6"
+                    style="text-align:center;
+                           padding:20px;
+                           color:#95a5a6;
+                           font-size:13px;">
+                    <i class="fas fa-inbox me-2"></i>
+                    No marks entered for ${type} ${number} yet.
+                </td>
+            </tr>`;
+        box.style.display = 'block';
+        return;
+    }
+
+    // Build table rows
+    let rows = '';
+    data.forEach((g, i) => {
+        const pct   = Math.round(
+            (g.marks_obtained / g.total_marks) * 100);
+        const color = pct >= 75 ? '#27AE60'
+                    : pct >= 50 ? '#f39c12'
+                    : '#E74C3C';
+        rows += `
+            <tr>
+                <td>${i + 1}</td>
+                <td>
+                    <i class="fas fa-user-graduate me-2"
+                       style="color:#2980b9;"></i>
+                    <strong>${g.full_name}</strong>
+                </td>
+                <td style="color:#7f8c8d; font-size:13px;">
+                    ${g.reg_no}
+                </td>
+                <td><strong>${g.marks_obtained}</strong></td>
+                <td>${g.total_marks}</td>
+                <td>
+                    <span style="font-weight:700; color:${color};">
+                        ${pct}%
+                    </span>
+                </td>
+            </tr>`;
+    });
+
+    tbody.innerHTML = rows;
+    box.style.display = 'block';
 }
 </script>
 
